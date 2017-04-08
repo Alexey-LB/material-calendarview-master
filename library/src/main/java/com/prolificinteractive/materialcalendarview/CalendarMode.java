@@ -7,6 +7,7 @@ public enum CalendarMode {
     WEEKS(1);
 
     final int visibleWeeksCount;
+    //public int visibleWeeksCount;
 
     CalendarMode(int visibleWeeksCount) {
         this.visibleWeeksCount = visibleWeeksCount;

@@ -17,9 +17,15 @@ import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.prolificinteractive.materialcalendarview.OnDateSelectedListener;
 import com.prolificinteractive.materialcalendarview.OnMonthChangedListener;
 
+import java.lang.reflect.Array;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 import butterknife.Bind;
@@ -33,11 +39,23 @@ import butterknife.OnClick;
 public class DisableDaysActivity extends AppCompatActivity implements OnDateSelectedListener, OnMonthChangedListener {
 
     private static final DateFormat FORMATTER = SimpleDateFormat.getDateInstance();
+
+    public static final SimpleDateFormat dateFormat = new SimpleDateFormat("yyyyMMdd'_'HHmmss'_'Z", Locale.ENGLISH);
+
+
     @Bind(R.id.calendarView)
     MaterialCalendarView widget;
 
     @Bind(R.id.textView)
     TextView textView;
+
+    List <Date> dates = Arrays.asList(new Date(2017, 3, 0), new Date(2017, 3, 0));
+
+    public DisableDaysActivity newInstance(List <Date> dates_){
+        DisableDaysActivity disableDaysActivity = new DisableDaysActivity();
+        dates = dates_;
+        return disableDaysActivity;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,15 +68,20 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
 
         //Setup initial text
         textView.setText(getSelectedDatesString());
-
         // Add a decorator to disable prime numbered days
-        widget.addDecorator(new PrimeDayDisableDecorator());
-        // Add a second decorator that explicitly enables days <= 10. This will work because
-        //  decorators are applied in order, and the system allows re-enabling
-        widget.addDecorator(new EnableOneToTenDecorator());
+        widget.addDecorator(new MyPrimeDayDisableDecorator());
 
+        //        // Add a decorator to disable prime numbered days
+        //        widget.addDecorator(new PrimeDayDisableDecorator());
+        //        // Add a second decorator that explicitly enables days <= 10. This will work because
+        //        //  decorators are applied in order, and the system allows re-enabling
+        //        widget.addDecorator(new EnableOneToTenDecorator());
+//  year    the year minus 1900,  month   the month between 0-11,
+// date    the day of the month between 1-31, hrs     the hours between 0-23.
+//  min     the minutes between 0-59, sec     the seconds between 0-59.
         Calendar calendar = Calendar.getInstance();
         widget.setSelectedDate(calendar.getTime());
+        calkcCalendar();
 
         Calendar instance1 = Calendar.getInstance();
         instance1.set(instance1.get(Calendar.YEAR), Calendar.JANUARY, 1);
@@ -75,6 +98,63 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
 
         widget.setArrowColor(0xFF00FF80);
         widget.setSelectionColor(0xFF00FF0F);
+        // установка текущего дня
+        CalendarDay calendarDay = CalendarDay.today();
+        //выбор-очистка дня
+        widget.clearSelection();//очистка всех выделенных дней (ввиде круга)
+        widget.setDateSelected(calendarDay,true);//установка(true) и сброс (false) ВЫБОРА дня(ввиде круга)
+        // указание какие дни нам доступны
+        for(int i = 0; i <MyPrimeDayDisableDecorator.PRIME_TABLE.length;i++){
+            if ((i & 1) == 0) MyPrimeDayDisableDecorator.PRIME_TABLE[i] = true;
+            else MyPrimeDayDisableDecorator.PRIME_TABLE[i] = false;
+        }
+
+//        for (CalendarDay calendarDay : ss.selectedDates) {
+//            setDateSelected(calendarDay, true);
+ //       }
+      //
+    }
+
+    private void calkcCalendar(){
+        Date widgetDate = widget.getCurrentDate().getDate();
+//        Calendar minCalendar = Calendar.getInstance();
+//        Calendar maxCalendar = Calendar.getInstance();
+//        //установили мин и максимальную дату
+//        minCalendar.set(widgetDate.getYear(), widgetDate.getMonth(), 1,0,0,0);
+//        maxCalendar.set(widgetDate.getYear(), widgetDate.getMonth() + 1, 1,0,0,0);
+//        Log.e("Cal MinMax", "min= " + dateFormat.format(minCalendar.getTime())
+//                + " -- max= " + dateFormat.format(maxCalendar.getTime()));
+
+        Date minDate = new Date(widgetDate.getYear(), widgetDate.getMonth(), 1,0,0,0);
+        Date maxDate = new Date(widgetDate.getYear(), widgetDate.getMonth()+1, 1,0,0,0);
+
+        Log.e("Cal MinMax", "min= " + dateFormat.format(minDate.getTime())
+                + " -- max= " + dateFormat.format(maxDate.getTime()));
+        //здесь сравнение дат и установка дней, в которых есть записи
+
+
+    }
+
+    private static class MyPrimeDayDisableDecorator implements DayViewDecorator {
+
+        @Override
+        public boolean shouldDecorate(CalendarDay day) {
+            //до 127 раз shouldDecorate, (вначале вызывается decorate, 2)
+            // (исходный апрель 04- НО здесь от 0/11, тоесть апрель 3 номер)
+            // вызывается от февраля (дата с 26по 28 февраля, номер месяца 1) и до
+            // июня(вплоть до 10 июня, номер месяца 5)
+            Log.i("Cal"," shouldDecorate" + "  m= " +day.getMonth() + "  d="+day.getDay());
+            return !PRIME_TABLE[day.getDay()];
+        }
+
+        @Override
+        public void decorate(DayViewFacade view) {
+            view.setDaysDisabled(true);
+            //вызывается в начале раза 2, потом до 127 раз shouldDecorate
+            Log.v("Cal"," decorate");
+        }
+        // по умолчанию все false
+        public static boolean[] PRIME_TABLE = new boolean[36]; //  1/31 + PADDING
     }
 
     @Override
@@ -89,6 +169,7 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
         //noinspection ConstantConditions
         getSupportActionBar().setTitle(FORMATTER.format(date.getDate()));
         Log.v("Cal"," onMonthChanged");
+        calkcCalendar();
     }
 
     private String getSelectedDatesString() {
@@ -102,6 +183,8 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
         else onSetMonthMode();
 
         Log.v("Cal"," SelectedDates= " + FORMATTER.format(date.getDate()));
+        calkcCalendar();
+
         return FORMATTER.format(date.getDate());
     }
 
@@ -160,8 +243,13 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
 
     //@OnClick(R.id.button_weeks)
     public void onSetWeekMode() {
+        CalendarMode calendarMode = CalendarMode.WEEKS;
+
+       // calendarMode.visibleWeeksCount = 1;
+
         widget.state().edit()
-                .setCalendarDisplayMode(CalendarMode.WEEKS)
+                //.setCalendarDisplayMode(CalendarMode.WEEKS)
+                .setCalendarDisplayMode(calendarMode)
                 .commit();
     }
 
@@ -181,6 +269,8 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
     void onNextClicked() {
         widget.goToNext();
     }
+
+
 
     private static class PrimeDayDisableDecorator implements DayViewDecorator {
 
