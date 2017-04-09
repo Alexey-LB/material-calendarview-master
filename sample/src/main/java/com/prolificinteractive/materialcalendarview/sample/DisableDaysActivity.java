@@ -17,6 +17,7 @@ import com.prolificinteractive.materialcalendarview.MaterialCalendarView;
 import com.prolificinteractive.materialcalendarview.OnDateSelectedListener;
 import com.prolificinteractive.materialcalendarview.OnMonthChangedListener;
 
+import java.io.File;
 import java.lang.reflect.Array;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -49,11 +50,18 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
     @Bind(R.id.textView)
     TextView textView;
 
-    List <Date> dates = Arrays.asList(new Date(2017, 3, 0), new Date(2017, 3, 0));
+    int year = 2017 - 1900;
+    //  year    the year minus 1900,  month  0-11, date 1-31, hrs 0-23, min 0-59, sec 0-59.
+    List <Date> listDates = Arrays.asList(
+            new Date(year, 3, 3,0,0,0), new Date(year, 3, 6,0,0,0), new Date(year, 3, 9,0,0,0)
+            ,new Date(year, 4, 4,0,0,0), new Date(year, 4, 8,0,0,0), new Date(year, 4, 12,0,0,0)
+            ,new Date(year, 5, 5,0,0,0), new Date(year, 5, 10,0,0,0), new Date(year, 5, 15,0,0,0)
+            ,new Date(year, 6, 6,0,0,0), new Date(year, 6, 12,0,0,0), new Date(year, 6, 18,0,0,0)
+    );
 
-    public DisableDaysActivity newInstance(List <Date> dates_){
+    public DisableDaysActivity newInstance(List <Date> listDates_){
         DisableDaysActivity disableDaysActivity = new DisableDaysActivity();
-        dates = dates_;
+        listDates = listDates_;
         return disableDaysActivity;
     }
 
@@ -76,9 +84,8 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
         //        // Add a second decorator that explicitly enables days <= 10. This will work because
         //        //  decorators are applied in order, and the system allows re-enabling
         //        widget.addDecorator(new EnableOneToTenDecorator());
-//  year    the year minus 1900,  month   the month between 0-11,
-// date    the day of the month between 1-31, hrs     the hours between 0-23.
-//  min     the minutes between 0-59, sec     the seconds between 0-59.
+
+        //  year    the year minus 1900,  month  0-11, date 1-31, hrs 0-23, min 0-59, sec 0-59.
         Calendar calendar = Calendar.getInstance();
         widget.setSelectedDate(calendar.getTime());
         calkcCalendar();
@@ -90,9 +97,14 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
         instance2.set(instance2.get(Calendar.YEAR) + 2, Calendar.OCTOBER, 31);
 
         //устанавливает минимальную дату и максимальную дату выбора
+//        widget.state().edit()
+//                .setMinimumDate(instance1.getTime())
+//                .setMaximumDate(instance2.getTime())
+//                .commit();
+
         widget.state().edit()
-                .setMinimumDate(instance1.getTime())
-                .setMaximumDate(instance2.getTime())
+                .setMinimumDate(getMinMaxCalendar(false))
+                .setMaximumDate(getMinMaxCalendar(true))
                 .commit();
 //установка цвета указателей и выбра дня
 
@@ -103,11 +115,11 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
         //выбор-очистка дня
         widget.clearSelection();//очистка всех выделенных дней (ввиде круга)
         widget.setDateSelected(calendarDay,true);//установка(true) и сброс (false) ВЫБОРА дня(ввиде круга)
-        // указание какие дни нам доступны
-        for(int i = 0; i <MyPrimeDayDisableDecorator.PRIME_TABLE.length;i++){
-            if ((i & 1) == 0) MyPrimeDayDisableDecorator.PRIME_TABLE[i] = true;
-            else MyPrimeDayDisableDecorator.PRIME_TABLE[i] = false;
-        }
+//        // указание какие дни нам доступны
+//        for(int i = 0; i <MyPrimeDayDisableDecorator.PRIME_TABLE.length;i++){
+//            if ((i & 1) == 0) MyPrimeDayDisableDecorator.PRIME_TABLE[i] = true;
+//            else MyPrimeDayDisableDecorator.PRIME_TABLE[i] = false;
+//        }
 
 //        for (CalendarDay calendarDay : ss.selectedDates) {
 //            setDateSelected(calendarDay, true);
@@ -115,8 +127,71 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
       //
     }
 
+    private Calendar getCalendar(long millis){
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(millis);
+        return calendar;
+    }
+
+    private Calendar getCalendar(int year, int month, int date){
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(year,month,date,0,0,0);
+        return calendar;
+    }
+    //определение минимальной и максимальной даты за которую есть данные
+    // если список пуст, показываем текущий месяц просто
+    private Calendar getMinMaxCalendar(boolean max){
+        long time = System.currentTimeMillis();
+        if(listDates != null) {
+            for (int i = 0; i < listDates.size(); i++) {
+                if (max) {
+                    if (listDates.get(i).getTime() > time) time = listDates.get(i).getTime();
+                } else {
+                    if (listDates.get(i).getTime() < time) time = listDates.get(i).getTime();
+                }
+            }
+        }
+        //расширяем список на ВЕСЬ месяц от 1 до ПОСЛЕДНЕГО числа месяца
+        Calendar calendar = getCalendar(time);
+        if(max) {
+            return getCalendar(calendar.get(Calendar.YEAR)
+                    ,calendar.get(Calendar.MONTH) + 1, 0);//1 число следующего МЕСЯЦА не ВКЛЮЧАЕМ!!
+        }
+        return getCalendar(calendar.get(Calendar.YEAR)
+                ,calendar.get(Calendar.MONTH), 1);
+    }
+
     private void calkcCalendar(){
+        if(listDates == null) return;
+        Calendar widgetCalendar = widget.getCurrentDate().getCalendar();
+        //установили мин и максимальную дату
+        Calendar minCalendar = getCalendar(widgetCalendar.get(Calendar.YEAR), widgetCalendar.get(Calendar.MONTH), 1);
+        Calendar maxCalendar = getCalendar(widgetCalendar.get(Calendar.YEAR), widgetCalendar.get(Calendar.MONTH)+1, 1);
+        MyPrimeDayDisableDecorator.clearDecorate();
+        //здесь сравнение дат и установка дней, в которых есть записи
+        for(int i = 0; i < listDates.size();i++){
+            Calendar calendar = getCalendar(listDates.get(i).getTime());
+
+            if((maxCalendar.getTime().compareTo(calendar.getTime()) > 0)
+                    && (minCalendar.getTime().compareTo(calendar.getTime()) <= 0)){
+                //выделяем дату в календаре
+                MyPrimeDayDisableDecorator.setrDecorate(calendar.get(Calendar.DATE));
+                Log.v("Cal ", "["+calendar.get(Calendar.DATE)+"]  !! true");
+            }
+
+            Log.e("Cal MinMax", "min= " + dateFormat.format(minCalendar.getTime())
+                    + " -- max= " + dateFormat.format(maxCalendar.getTime())
+                    + " -- carent= " + dateFormat.format(calendar.getTime().getTime())
+            );
+
+        }
+        widget.invalidateDecorators();//обновить Выделенные дни в которых есть записи
+    }
+
+    private void calkcCalendar_(){
+        if(listDates == null) return;
         Date widgetDate = widget.getCurrentDate().getDate();
+
 //        Calendar minCalendar = Calendar.getInstance();
 //        Calendar maxCalendar = Calendar.getInstance();
 //        //установили мин и максимальную дату
@@ -124,14 +199,26 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
 //        maxCalendar.set(widgetDate.getYear(), widgetDate.getMonth() + 1, 1,0,0,0);
 //        Log.e("Cal MinMax", "min= " + dateFormat.format(minCalendar.getTime())
 //                + " -- max= " + dateFormat.format(maxCalendar.getTime()));
-
         Date minDate = new Date(widgetDate.getYear(), widgetDate.getMonth(), 1,0,0,0);
         Date maxDate = new Date(widgetDate.getYear(), widgetDate.getMonth()+1, 1,0,0,0);
 
-        Log.e("Cal MinMax", "min= " + dateFormat.format(minDate.getTime())
-                + " -- max= " + dateFormat.format(maxDate.getTime()));
+        MyPrimeDayDisableDecorator.clearDecorate();
         //здесь сравнение дат и установка дней, в которых есть записи
+        for(int i = 0; i < listDates.size();i++){
+            Date d = listDates.get(i);
 
+            if((minDate.compareTo(d) <= 0) && (maxDate.compareTo(d) > 0)){
+                //выделяем дату в календаре
+                MyPrimeDayDisableDecorator.setrDecorate(d.getDay());
+                Log.v("Cal ", "["+d.getDay()+"]  !! true");
+            }
+
+            Log.e("Cal MinMax", "min= " + dateFormat.format(minDate.getTime())
+                    + " -- max= " + dateFormat.format(maxDate.getTime())
+                    + " -- carent= " + dateFormat.format(d.getTime())
+            );
+
+        }
 
     }
 
@@ -143,7 +230,7 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
             // (исходный апрель 04- НО здесь от 0/11, тоесть апрель 3 номер)
             // вызывается от февраля (дата с 26по 28 февраля, номер месяца 1) и до
             // июня(вплоть до 10 июня, номер месяца 5)
-            Log.i("Cal"," shouldDecorate" + "  m= " +day.getMonth() + "  d="+day.getDay());
+            Log.i("Cal"," shouldDecorate" + "  m= " +day.getMonth() + "  d="+day.getDay() + "  decor= "+ PRIME_TABLE[day.getDay()]);
             return !PRIME_TABLE[day.getDay()];
         }
 
@@ -154,7 +241,10 @@ public class DisableDaysActivity extends AppCompatActivity implements OnDateSele
             Log.v("Cal"," decorate");
         }
         // по умолчанию все false
-        public static boolean[] PRIME_TABLE = new boolean[36]; //  1/31 + PADDING
+        private static boolean[] PRIME_TABLE = new boolean[36]; //  1/31 + PADDING
+
+        public  static void clearDecorate(){ for(int i = 0;i < PRIME_TABLE.length;i++)PRIME_TABLE[i] = false;}
+        public  static void setrDecorate(int day){if((day >= 0) && (day < PRIME_TABLE.length))PRIME_TABLE[day] = true;}
     }
 
     @Override
